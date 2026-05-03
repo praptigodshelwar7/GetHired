@@ -1,14 +1,12 @@
-services:
-  # PostgreSQL Database
-  - type: pgo
-    name: gethired-db
-    plan: free
+databases:
+  - name: gethired-db
+    databaseName: gethired
+    user: gethireduser
 
-  # Spring Boot Backend
+services:
   - type: web
     name: gethired-api
     env: java
-    plan: free
     rootDir: server
     buildCommand: ./mvnw clean package -DskipTests
     startCommand: java -jar target/server-0.0.1-SNAPSHOT.jar
