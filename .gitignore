@@ -1,0 +1,31 @@
+# Node
+node_modules/
+dist/
+build/
+.env
+.env.local
+
+# Java / Maven
+target/
+*.jar
+*.war
+.mvn/
+server/apache-maven-*/
+
+# Database
+server/data/
+*.db
+*.mv.db
+*.trace.db
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+.classpath
+.project
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
