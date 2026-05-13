@@ -11,6 +11,10 @@ target/
 *.war
 .mvn/
 server/apache-maven-*/
+maven.zip
+
+# JVM crash logs
+hs_err_pid*.log
 
 # Database
 server/data/
@@ -29,3 +33,4 @@ server/data/
 # OS
 .DS_Store
 Thumbs.db
+

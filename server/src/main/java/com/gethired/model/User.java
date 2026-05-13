@@ -31,10 +31,10 @@ public class User {
     private int leetcodeHard;
     private int leetcodeStreak;
     
-    @Column(length = 2000)
+    @Column(columnDefinition = "TEXT")
     private String analysisResultJson; // Store as JSON string
     
-    @Column(length = 2000)
+    @Column(columnDefinition = "TEXT")
     private String streakDaysJson; // Store as JSON string
     
     private String role = "USER";

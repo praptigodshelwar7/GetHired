@@ -52,7 +52,7 @@ const Dashboard = () => {
     // LeetCode sync — independent
     if (editHandles.leetcode) {
       try {
-        const lcRes = await axios.get(`/leetcode-api/${editHandles.leetcode}/solved`);
+        const lcRes = await axios.get(`https://alfa-leetcode-api.onrender.com/${editHandles.leetcode}/solved`);
         if (lcRes.data && lcRes.data.solvedProblem !== undefined) {
           updateLeetcodeData({
             totalSolved: lcRes.data.solvedProblem,
@@ -65,7 +65,7 @@ const Dashboard = () => {
       } catch (lcErr) {
         console.warn('LeetCode primary API failed, trying fallback...', lcErr.message);
         try {
-          const lcRes2 = await axios.get(`/leetcode-api/${editHandles.leetcode}`);
+          const lcRes2 = await axios.get(`https://alfa-leetcode-api.onrender.com/${editHandles.leetcode}`);
           if (lcRes2.data && (lcRes2.data.totalSolved !== undefined || lcRes2.data.solvedProblem !== undefined)) {
             updateLeetcodeData({
               totalSolved: lcRes2.data.totalSolved || lcRes2.data.solvedProblem || 0,
@@ -82,7 +82,7 @@ const Dashboard = () => {
 
       // Fetch LeetCode streak from calendar endpoint
       try {
-        const calRes = await axios.get(`/leetcode-api/${editHandles.leetcode}/calendar`);
+        const calRes = await axios.get(`https://alfa-leetcode-api.onrender.com/${editHandles.leetcode}/calendar`);
         if (calRes.data) {
           updateLeetcodeStreak({
             streak: calRes.data.streak || 0,

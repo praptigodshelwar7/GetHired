@@ -7,7 +7,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/dsa")
-@CrossOrigin(origins = "*")
 public class DSAController {
 
     @Autowired

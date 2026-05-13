@@ -7,7 +7,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/resume")
-@CrossOrigin(origins = "*")
 public class ResumeController {
 
     @Autowired

@@ -2,13 +2,17 @@ databases:
   - name: gethired-db
     databaseName: gethired
     user: gethireduser
+    plan: free
 
 services:
   - type: web
     name: gethired-api
     env: docker
     rootDir: server
+    plan: free
     envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
       - key: SPRING_DATASOURCE_URL
         fromDatabase:
           name: gethired-db
@@ -24,4 +28,5 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: ALLOWED_ORIGINS
-        value: "https://your-vercel-frontend-url.vercel.app" # Replace with actual Vercel URL
+        value: "https://get-hired-mu.vercel.app,https://get-hired-client.vercel.app"
+

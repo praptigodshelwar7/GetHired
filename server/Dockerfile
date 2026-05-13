@@ -17,5 +17,9 @@ WORKDIR /app
 # Copy the built jar from the build stage
 COPY --from=build /app/target/*.jar app.jar
 
+# Activate production profile by default
+ENV SPRING_PROFILES_ACTIVE=prod
+
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]
+
