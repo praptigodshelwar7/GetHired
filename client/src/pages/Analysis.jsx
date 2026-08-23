@@ -2,7 +2,10 @@ import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, AlertCircle, CheckCircle2, ArrowRight, Upload, FileCheck, Loader2 } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
+import axios from 'axios';
 import { useUser } from '../context/UserContext';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
 
 // Initialize PDF.js worker with a reliable CDN
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
@@ -37,14 +40,6 @@ const Analysis = () => {
     return fullText;
   };
 
-  const ROLE_SKILLS = {
-    'SDE': ["Java", "SpringBoot", "Docker", "Kubernetes", "System Design", "SQL", "Algorithms", "Data Structures", "Microservices"],
-    'Data Scientist': ["Python", "TensorFlow", "PyTorch", "Pandas", "Scikit-Learn", "Machine Learning", "Statistics", "SQL", "Data Visualization"],
-    'Frontend Dev': ["React", "JavaScript", "CSS", "HTML", "TypeScript", "Tailwind", "Redux", "Framer Motion", "Next.js"],
-    'AI/ML Engineer': ["Python", "Machine Learning", "Deep Learning", "TensorFlow", "PyTorch", "NLP", "Computer Vision", "MLOps", "Model Deployment"],
-    'DevOps Engineer': ["Docker", "Kubernetes", "CI/CD", "Jenkins", "GitHub Actions", "AWS", "Terraform", "Linux", "Bash Scripting", "Monitoring"]
-  };
-
   const handleAnalyze = async () => {
     if (!file) {
       alert("Please upload your resume first!");
@@ -54,38 +49,27 @@ const Analysis = () => {
     setParsing(true);
 
     try {
+      // Step 1: Extract raw text from PDF in the browser using PDF.js
       const resumeText = await extractTextFromPDF(file);
       console.log("Extracted Text Length:", resumeText.length);
       setParsing(false);
 
-      const targetSkills = ROLE_SKILLS[role] || ROLE_SKILLS['SDE'];
-
-      const missing = targetSkills.filter(skill =>
-        !resumeText.toLowerCase().includes(skill.toLowerCase())
-      );
-
-      const score = Math.round(((targetSkills.length - missing.length) / targetSkills.length) * 100);
-
-      const analysisResult = {
-        score,
-        missingSkills: missing,
-        matchedSkills: targetSkills.filter(s => !missing.includes(s)),
+      // Step 2: Send extracted text + selected role to the Java backend for analysis
+      const response = await axios.post(`${API_BASE_URL}/resume/analyze`, {
+        resumeText,
         role,
-        roadmap: missing.length > 0
-          ? missing.map(skill => `Complete a production project using ${skill} to bridge the gap.`)
-          : [`You are ready for ${role}! Focus on advanced mock interviews.`, 'Master system scalability', 'Contribute to Open Source'],
-      };
+      });
 
-      setTimeout(() => {
-        setResult(analysisResult);
-        // Save to context so Roadmap can use it
-        updateAnalysisResult(analysisResult);
-        updateTargetRole(role);
-        setAnalyzing(false);
-      }, 800);
+      const analysisResult = { ...response.data, role };
+
+      setResult(analysisResult);
+      // Save to context so Roadmap can use it
+      updateAnalysisResult(analysisResult);
+      updateTargetRole(role);
+      setAnalyzing(false);
     } catch (err) {
-      console.error("PDF Parsing Error:", err);
-      alert("Failed to parse PDF. Please try a different file.");
+      console.error("Analysis Error:", err);
+      alert(err.response?.data?.message || "Analysis failed. Please try again.");
       setAnalyzing(false);
       setParsing(false);
     }

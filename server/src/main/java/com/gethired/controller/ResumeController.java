@@ -15,7 +15,7 @@ public class ResumeController {
     @PostMapping("/analyze")
     public Map<String, Object> analyze(@RequestBody Map<String, String> request) {
         String resumeText = request.get("resumeText");
-        String jd = request.get("jd");
-        return resumeService.analyzeResume(resumeText, jd);
+        String role = request.get("role");
+        return resumeService.analyzeResume(resumeText, role);
     }
 }
