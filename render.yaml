@@ -29,4 +29,8 @@ services:
         generateValue: true
       - key: ALLOWED_ORIGINS
         value: "https://get-hired-mu.vercel.app,https://get-hired-client.vercel.app"
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: "gemini-2.0-flash"
 

@@ -84,16 +84,23 @@ public class ResumeService {
      * Primary entry point: tries AI-powered analysis first, falls back to rule-based.
      */
     public Map<String, Object> analyzeResume(String resumeText, String role) {
+        String fallbackReason = null;
         if (geminiService.isAvailable()) {
             try {
                 return analyzeWithAI(resumeText, role);
             } catch (Exception e) {
+                fallbackReason = "AI analysis failed (" + e.getMessage() + ")";
                 log.warn("AI analysis failed, falling back to rule-based analysis: {}", e.getMessage());
             }
         } else {
+            fallbackReason = "Gemini API key is not configured in backend.";
             log.info("Gemini API key not configured. Using rule-based analysis.");
         }
-        return analyzeWithRules(resumeText, role);
+        Map<String, Object> result = analyzeWithRules(resumeText, role);
+        if (fallbackReason != null) {
+            result.put("fallbackReason", fallbackReason);
+        }
+        return result;
     }
 
     // ─── AI-Powered Analysis ─────────────────────────────────────────────────

@@ -26,7 +26,7 @@ public class GeminiService {
     @Value("${gemini.api.key:}")
     private String apiKey;
 
-    @Value("${gemini.api.model:gemini-3.6-flash}")
+    @Value("${gemini.api.model:gemini-2.0-flash}")
     private String model;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -59,7 +59,7 @@ public class GeminiService {
         if (model != null && !model.isBlank()) {
             modelsToTry.add(model);
         }
-        for (String fallback : List.of("gemini-3.6-flash", "gemini-flash-latest", "gemini-2.5-pro")) {
+        for (String fallback : List.of("gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro")) {
             if (!modelsToTry.contains(fallback)) {
                 modelsToTry.add(fallback);
             }

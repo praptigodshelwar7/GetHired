@@ -183,8 +183,8 @@ const Analysis = () => {
         {result && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
 
-            {/* AI Badge */}
-            {result.aiPowered && (
+            {/* AI or Fallback Badge */}
+            {result.aiPowered ? (
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -199,9 +199,26 @@ const Analysis = () => {
                 <Sparkles size={14} color="#a78bfa" />
                 <span>Powered by AI — this analysis uses deep contextual understanding, not just keyword matching.</span>
               </motion.div>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '0.5rem',
+                  background: 'rgba(234, 179, 8, 0.12)',
+                  border: '1px solid rgba(234, 179, 8, 0.35)',
+                  borderRadius: '0.75rem', padding: '0.6rem 1rem',
+                  marginBottom: '1rem', fontSize: '0.82rem', color: '#fde047',
+                }}
+              >
+                <AlertCircle size={15} color="#facc15" style={{ flexShrink: 0 }} />
+                <span>
+                  <strong>Rule-Based Analysis:</strong> {result.fallbackReason || 'Configure GEMINI_API_KEY in the backend to enable AI analysis.'}
+                </span>
+              </motion.div>
             )}
 
-            {/* AI Summary */}
+            {/* Summary */}
             {result.summary && (
               <motion.div
                 className="glass-card"
@@ -210,12 +227,14 @@ const Analysis = () => {
                 transition={{ delay: 0.05 }}
                 style={{
                   marginBottom: '1.5rem',
-                  background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.06), rgba(139, 92, 246, 0.06))',
-                  borderLeft: '3px solid #8b5cf6',
+                  background: result.aiPowered
+                    ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.06), rgba(139, 92, 246, 0.06))'
+                    : 'linear-gradient(135deg, rgba(234, 179, 8, 0.05), rgba(139, 92, 246, 0.05))',
+                  borderLeft: result.aiPowered ? '3px solid #8b5cf6' : '3px solid #eab308',
                 }}
               >
-                <h4 style={{ color: '#a78bfa', marginBottom: '0.75rem', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <Brain size={16} /> AI Summary
+                <h4 style={{ color: result.aiPowered ? '#a78bfa' : '#facc15', marginBottom: '0.75rem', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Brain size={16} /> {result.aiPowered ? 'AI Summary' : 'Profile Summary (Rule-Based Match)'}
                 </h4>
                 <p style={{ fontSize: '0.9rem', lineHeight: '1.6', color: 'var(--text)' }}>
                   {result.summary}
