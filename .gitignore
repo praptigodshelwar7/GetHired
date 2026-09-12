@@ -34,3 +34,7 @@ server/data/
 .DS_Store
 Thumbs.db
 
+# Build artifacts
+out/
+bin/
+dsa/out/

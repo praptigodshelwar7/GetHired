@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, AlertCircle, CheckCircle2, ArrowRight, Upload, FileCheck, Loader2 } from 'lucide-react';
+import { Search, AlertCircle, CheckCircle2, ArrowRight, Upload, FileCheck, Loader2, Sparkles, Brain, Zap } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 import axios from 'axios';
 import { useUser } from '../context/UserContext';
@@ -165,9 +165,14 @@ const Analysis = () => {
               {analyzing ? (
                 <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <Loader2 size={16} className="animate-spin" />
-                  {parsing ? 'Parsing PDF...' : 'Analyzing...'}
+                  {parsing ? 'Parsing PDF...' : 'AI is Analyzing...'}
                 </span>
-              ) : 'Analyze Gaps'}
+              ) : (
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
+                  <Brain size={16} />
+                  Analyze with AI
+                </span>
+              )}
             </button>
           </div>
         </div>
@@ -177,6 +182,47 @@ const Analysis = () => {
       <AnimatePresence>
         {result && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+
+            {/* AI Badge */}
+            {result.aiPowered && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '0.5rem',
+                  background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(236, 72, 153, 0.15))',
+                  border: '1px solid rgba(139, 92, 246, 0.3)',
+                  borderRadius: '0.75rem', padding: '0.6rem 1rem',
+                  marginBottom: '1rem', fontSize: '0.8rem', color: '#c4b5fd',
+                }}
+              >
+                <Sparkles size={14} color="#a78bfa" />
+                <span>Powered by AI — this analysis uses deep contextual understanding, not just keyword matching.</span>
+              </motion.div>
+            )}
+
+            {/* AI Summary */}
+            {result.summary && (
+              <motion.div
+                className="glass-card"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.05 }}
+                style={{
+                  marginBottom: '1.5rem',
+                  background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.06), rgba(139, 92, 246, 0.06))',
+                  borderLeft: '3px solid #8b5cf6',
+                }}
+              >
+                <h4 style={{ color: '#a78bfa', marginBottom: '0.75rem', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Brain size={16} /> AI Summary
+                </h4>
+                <p style={{ fontSize: '0.9rem', lineHeight: '1.6', color: 'var(--text)' }}>
+                  {result.summary}
+                </p>
+              </motion.div>
+            )}
+
             {/* Score Header */}
             <div className="glass-card" style={{ textAlign: 'center', marginBottom: '1.5rem', background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(6, 182, 212, 0.08))' }}>
               <div style={{ fontSize: '3rem', fontWeight: '800' }}>
@@ -190,6 +236,24 @@ const Analysis = () => {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+
+              {/* Strengths (AI only) */}
+              {result.strengths && result.strengths.length > 0 && (
+                <div className="glass-card" style={{ background: 'rgba(139, 92, 246, 0.03)' }}>
+                  <h4 style={{ color: '#a78bfa', marginBottom: '1rem', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Zap size={14} /> Key Strengths
+                  </h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                    {result.strengths.map((strength, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', fontSize: '0.85rem' }}>
+                        <Sparkles size={14} color="#a78bfa" style={{ marginTop: '2px', flexShrink: 0 }} />
+                        <span>{strength}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Matched Skills */}
               {result.matchedSkills.length > 0 && (
                 <div className="glass-card" style={{ background: 'rgba(16, 185, 129, 0.03)' }}>
