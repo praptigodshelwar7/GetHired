@@ -9,7 +9,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -82,8 +84,11 @@ public class GeminiService {
         for (String targetModel : modelsToTry) {
             try {
                 log.info("Calling Gemini API with model: {}", targetModel);
+                // Use URI.create to prevent Spring WebClient from escaping ':' into '%3A'
+                URI targetUri = URI.create(String.format("%s/models/%s:generateContent", GEMINI_BASE_URL, targetModel));
                 String responseJson = webClient.post()
-                        .uri("/models/{model}:generateContent?key={key}", targetModel, apiKey)
+                        .uri(targetUri)
+                        .header("x-goog-api-key", apiKey.trim())
                         .contentType(MediaType.APPLICATION_JSON)
                         .bodyValue(requestBody)
                         .retrieve()
@@ -105,6 +110,11 @@ public class GeminiService {
                         .asText();
 
                 return text;
+            } catch (WebClientResponseException e) {
+                String errorBody = e.getResponseBodyAsString();
+                String msg = "HTTP " + e.getStatusCode() + ": " + (errorBody != null && !errorBody.isBlank() ? errorBody : e.getMessage());
+                lastException = new RuntimeException(msg, e);
+                log.warn("Gemini API call failed with model {}: {}. Trying next fallback if available.", targetModel, msg);
             } catch (Exception e) {
                 lastException = e;
                 log.warn("Gemini API call failed with model {}: {}. Trying next fallback if available.", targetModel, e.getMessage());
