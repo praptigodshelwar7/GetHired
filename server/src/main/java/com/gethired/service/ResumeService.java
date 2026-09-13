@@ -235,4 +235,8 @@ public class ResumeService {
         }
         return List.of();
     }
+
+    public Map<String, Object> getGeminiDiagnostics() {
+        return geminiService.getDiagnostics();
+    }
 }

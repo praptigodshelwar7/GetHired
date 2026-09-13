@@ -18,4 +18,9 @@ public class ResumeController {
         String role = request.get("role");
         return resumeService.analyzeResume(resumeText, role);
     }
+
+    @GetMapping("/status")
+    public Map<String, Object> getStatus() {
+        return resumeService.getGeminiDiagnostics();
+    }
 }

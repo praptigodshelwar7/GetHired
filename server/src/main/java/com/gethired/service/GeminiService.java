@@ -12,9 +12,8 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Service that communicates with the Google Gemini API for AI-powered analysis.
@@ -26,13 +25,15 @@ public class GeminiService {
     private static final String GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
 
     @Value("${gemini.api.key:}")
-    private String apiKey;
+    private String rawApiKey;
 
     @Value("${gemini.api.model:gemini-2.0-flash}")
-    private String model;
+    private String configuredModel;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private WebClient webClient;
+    private final List<String> cachedAvailableModels = new CopyOnWriteArrayList<>();
+    private volatile boolean modelsDiscovered = false;
 
     @PostConstruct
     public void init() {
@@ -42,10 +43,93 @@ public class GeminiService {
     }
 
     /**
+     * Cleans the API key by trimming and removing any surrounding quotes.
+     */
+    public String getApiKey() {
+        if (rawApiKey == null) return "";
+        String cleaned = rawApiKey.trim();
+        if ((cleaned.startsWith("\"") && cleaned.endsWith("\"")) ||
+            (cleaned.startsWith("'") && cleaned.endsWith("'"))) {
+            cleaned = cleaned.substring(1, cleaned.length() - 1).trim();
+        }
+        return cleaned;
+    }
+
+    /**
      * Returns true if the Gemini API key is configured and non-empty.
      */
     public boolean isAvailable() {
-        return apiKey != null && !apiKey.isBlank();
+        return !getApiKey().isBlank();
+    }
+
+    /**
+     * Discovers all models supported by this API key from Google's ModelService.ListModels.
+     */
+    public List<String> listAvailableModels() {
+        if (!isAvailable()) {
+            return Collections.emptyList();
+        }
+        String key = getApiKey();
+        try {
+            URI uri = URI.create(String.format("%s/models?key=%s", GEMINI_BASE_URL, key));
+            String responseJson = webClient.get()
+                    .uri(uri)
+                    .header("x-goog-api-key", key)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+
+            JsonNode root = objectMapper.readTree(responseJson);
+            List<String> result = new ArrayList<>();
+            if (root.has("models")) {
+                for (JsonNode m : root.get("models")) {
+                    String name = m.path("name").asText(); // e.g. "models/gemini-1.5-flash"
+                    JsonNode methods = m.path("supportedGenerationMethods");
+                    boolean canGenerate = false;
+                    if (methods.isArray()) {
+                        for (JsonNode method : methods) {
+                            if ("generateContent".equalsIgnoreCase(method.asText())) {
+                                canGenerate = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (canGenerate) {
+                        result.add(name.replaceFirst("^models/", ""));
+                    }
+                }
+            }
+            cachedAvailableModels.clear();
+            cachedAvailableModels.addAll(result);
+            modelsDiscovered = true;
+            log.info("Discovered {} Gemini models supporting generateContent: {}", result.size(), result);
+            return result;
+        } catch (Exception e) {
+            log.warn("Failed to discover models via ModelService.ListModels: {}", e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    /**
+     * Returns diagnostic status about Gemini connection.
+     */
+    public Map<String, Object> getDiagnostics() {
+        String key = getApiKey();
+        boolean hasKey = !key.isBlank();
+        int keyLength = key.length();
+        String maskedKey = hasKey
+                ? (keyLength > 8 ? key.substring(0, 4) + "..." + key.substring(keyLength - 4) : "***")
+                : "NOT_SET";
+
+        List<String> models = listAvailableModels();
+        return Map.of(
+                "apiKeyConfigured", hasKey,
+                "apiKeyMasked", maskedKey,
+                "apiKeyLength", keyLength,
+                "configuredModel", configuredModel != null ? configuredModel : "",
+                "availableModelsFound", models.size(),
+                "availableModels", models
+        );
     }
 
     /**
@@ -55,15 +139,45 @@ public class GeminiService {
         if (!isAvailable()) {
             throw new IllegalStateException("Gemini API key is not configured. Set the GEMINI_API_KEY environment variable.");
         }
+        String key = getApiKey();
 
-        // List of candidate models to try in order
-        List<String> modelsToTry = new ArrayList<>();
-        if (model != null && !model.isBlank()) {
-            modelsToTry.add(model);
+        // Discover models for this account if not done yet
+        if (!modelsDiscovered) {
+            listAvailableModels();
         }
-        for (String fallback : List.of("gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro")) {
-            if (!modelsToTry.contains(fallback)) {
-                modelsToTry.add(fallback);
+
+        List<String> modelsToTry = new ArrayList<>();
+        List<String> preferredModels = List.of(
+                configuredModel != null && !configuredModel.isBlank() ? configuredModel : "gemini-2.0-flash",
+                "gemini-2.0-flash",
+                "gemini-1.5-flash",
+                "gemini-1.5-flash-latest",
+                "gemini-2.5-flash",
+                "gemini-pro",
+                "gemini-1.5-pro"
+        );
+
+        if (!cachedAvailableModels.isEmpty()) {
+            // Only attempt models that Google verified exist on this key
+            for (String pref : preferredModels) {
+                if (cachedAvailableModels.contains(pref) && !modelsToTry.contains(pref)) {
+                    modelsToTry.add(pref);
+                }
+            }
+            // Add any other valid model returned by Google
+            for (String avail : cachedAvailableModels) {
+                if (!modelsToTry.contains(avail)) {
+                    modelsToTry.add(avail);
+                }
+            }
+        }
+
+        // If list discovery was empty (e.g. rate limit on list), use standard fallbacks
+        if (modelsToTry.isEmpty()) {
+            for (String pref : preferredModels) {
+                if (!modelsToTry.contains(pref)) {
+                    modelsToTry.add(pref);
+                }
             }
         }
 
@@ -80,15 +194,15 @@ public class GeminiService {
                 )
         );
 
-        Exception lastException = null;
+        List<String> errors = new ArrayList<>();
         for (String targetModel : modelsToTry) {
             try {
                 log.info("Calling Gemini API with model: {}", targetModel);
-                // Use URI.create to prevent Spring WebClient from escaping ':' into '%3A'
-                URI targetUri = URI.create(String.format("%s/models/%s:generateContent", GEMINI_BASE_URL, targetModel));
+                // Construct URI with URI.create to prevent Spring from escaping ':' to '%3A'
+                URI targetUri = URI.create(String.format("%s/models/%s:generateContent?key=%s", GEMINI_BASE_URL, targetModel, key));
                 String responseJson = webClient.post()
                         .uri(targetUri)
-                        .header("x-goog-api-key", apiKey.trim())
+                        .header("x-goog-api-key", key)
                         .contentType(MediaType.APPLICATION_JSON)
                         .bodyValue(requestBody)
                         .retrieve()
@@ -112,15 +226,16 @@ public class GeminiService {
                 return text;
             } catch (WebClientResponseException e) {
                 String errorBody = e.getResponseBodyAsString();
-                String msg = "HTTP " + e.getStatusCode() + ": " + (errorBody != null && !errorBody.isBlank() ? errorBody : e.getMessage());
-                lastException = new RuntimeException(msg, e);
-                log.warn("Gemini API call failed with model {}: {}. Trying next fallback if available.", targetModel, msg);
+                String msg = targetModel + ": HTTP " + e.getStatusCode().value() + " " + (errorBody != null && !errorBody.isBlank() ? errorBody : e.getMessage());
+                errors.add(msg);
+                log.warn("Gemini API call failed with model {}: {}", targetModel, msg);
             } catch (Exception e) {
-                lastException = e;
-                log.warn("Gemini API call failed with model {}: {}. Trying next fallback if available.", targetModel, e.getMessage());
+                String msg = targetModel + ": " + e.getMessage();
+                errors.add(msg);
+                log.warn("Gemini API call failed with model {}: {}", targetModel, e.getMessage());
             }
         }
 
-        throw new RuntimeException("Failed to get response from Gemini AI: " + (lastException != null ? lastException.getMessage() : "Unknown error"), lastException);
+        throw new RuntimeException("Failed to get response from Gemini AI: " + String.join(" | ", errors));
     }
 }
